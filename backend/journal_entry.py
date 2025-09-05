@@ -10,7 +10,7 @@ class JournalEntry(db.Model):
     sentiment = db.Column(db.String(20))
     ai_insights = db.Column(db.Text)
     tags = db.Column(db.JSON)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     def to_dict(self):
         return {

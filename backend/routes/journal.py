@@ -1,31 +1,30 @@
 from flask import Blueprint, request, jsonify, g
-from backend import db
-from backend.models.journal_entry import JournalEntry   # <-- ADDED
+from backend.extensions import db
+from backend.models.journal_entry import JournalEntry
 from backend.decorators import token_required
-import datetime
+from datetime import datetime
 
 journal_bp = Blueprint("journal_bp", __name__)
 
 # Get all entries for current user
 @journal_bp.route("/entries", methods=["GET"])
 @token_required
-def get_entries():
-    entries = JournalEntry.query.filter_by(user_id=g.current_user.id).order_by(JournalEntry.created_at.desc()).all()
+def get_entries(current_user):
+    entries = JournalEntry.query.filter_by(user_id=current_user.id).order_by(JournalEntry.date.desc()).all()
     return jsonify([entry.to_dict() for entry in entries])
 
 # Create a new journal entry
 @journal_bp.route("/entries", methods=["POST"])
 @token_required
-def create_entry():
+def create_entry(current_user):
     data = request.get_json()
     if not data or not data.get("content"):
         return jsonify({"message": "Content is required"}), 400
 
     entry = JournalEntry(
-        user_id=g.current_user.id,
+        user_id=current_user.id,
         title=data.get("title"),
-        content=data["content"],
-        mood=data.get("mood")
+        content=data["content"]
     )
     db.session.add(entry)
     db.session.commit()
@@ -34,8 +33,8 @@ def create_entry():
 # Get a specific entry
 @journal_bp.route("/entries/<int:entry_id>", methods=["GET"])
 @token_required
-def get_entry(entry_id):
-    entry = JournalEntry.query.filter_by(id=entry_id, user_id=g.current_user.id).first()
+def get_entry(current_user, entry_id):
+    entry = JournalEntry.query.filter_by(id=entry_id, user_id=current_user.id).first()
     if not entry:
         return jsonify({"message": "Entry not found"}), 404
     return jsonify(entry.to_dict())
@@ -43,16 +42,14 @@ def get_entry(entry_id):
 # Update an entry
 @journal_bp.route("/entries/<int:entry_id>", methods=["PUT"])
 @token_required
-def update_entry(entry_id):
-    entry = JournalEntry.query.filter_by(id=entry_id, user_id=g.current_user.id).first()
+def update_entry(current_user, entry_id):
+    entry = JournalEntry.query.filter_by(id=entry_id, user_id=current_user.id).first()
     if not entry:
         return jsonify({"message": "Entry not found"}), 404
 
     data = request.get_json()
     entry.title = data.get("title", entry.title)
     entry.content = data.get("content", entry.content)
-    entry.mood = data.get("mood", entry.mood)
-    entry.updated_at = datetime.datetime.utcnow()
 
     db.session.commit()
     return jsonify(entry.to_dict())
@@ -60,8 +57,8 @@ def update_entry(entry_id):
 # Delete an entry
 @journal_bp.route("/entries/<int:entry_id>", methods=["DELETE"])
 @token_required
-def delete_entry(entry_id):
-    entry = JournalEntry.query.filter_by(id=entry_id, user_id=g.current_user.id).first()
+def delete_entry(current_user, entry_id):
+    entry = JournalEntry.query.filter_by(id=entry_id, user_id=current_user.id).first()
     if not entry:
         return jsonify({"message": "Entry not found"}), 404
 

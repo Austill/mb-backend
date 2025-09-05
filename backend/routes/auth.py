@@ -1,7 +1,7 @@
 # backend/routes/auth.py
 from flask import Blueprint, request, jsonify, current_app
 from backend.extensions import db
-from backend.models.user import User
+from backend.models import User
 from backend.decorators import token_required
 import jwt, datetime, traceback
 
@@ -9,24 +9,43 @@ auth = Blueprint("auth", __name__)
 
 
 def _extract_email_password(data):
-    """
-    Accepts request JSON shaped as:
-      - {"email": "a@b.com", "password": "pw"}
-      - {"email": {"email": "a@b.com", "password": "pw"}} (nested shape)
-    Returns (email, password) or (None, None).
-    """
+    """Helper to extract email and password from request data."""
     if not data:
         return None, None
-
-    nested = data.get("email")
-    if isinstance(nested, dict):
-        email = nested.get("email") or nested.get("value")
-        password = nested.get("password") or nested.get("pass")
-        return (email, password)
-
-    email = data.get("email") or data.get("username") or data.get("emailAddress")
-    password = data.get("password") or data.get("pass")
+    
+    email = data.get("email")
+    password = data.get("password")
     return (email, password)
+
+
+@auth.route("/register", methods=["POST"])
+def register():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "Request body must be JSON"}), 400
+
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+
+        if not all([username, email, password]):
+            return jsonify({"message": "Username, email, and password are required"}), 400
+
+        if User.query.filter((User.username == username) | (User.email == email)).first():
+            return jsonify({"message": "Username or email already exists"}), 409
+
+        new_user = User(username=username, email=email)
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+
+        return jsonify({"message": "User created successfully", "user": new_user.to_dict()}), 201
+
+    except Exception as e:
+        current_app.logger.error("Register error: %s\n%s", e, traceback.format_exc())
+        db.session.rollback()
+        return jsonify({"message": "Internal server error"}), 500
 
 
 @auth.route("/change-password", methods=["PUT"])
@@ -74,16 +93,12 @@ def login():
         if not user or not user.check_password(password):
             return jsonify({"message": "Invalid credentials"}), 401
 
-        secret = current_app.config.get("SECRET_KEY", "dev-secret")
         payload = {
             "user_id": user.id,
             "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=24),
-            "iat": datetime.datetime.utcnow(),
         }
 
-        token = jwt.encode(payload, secret, algorithm="HS256")
-        if isinstance(token, bytes):
-            token = token.decode("utf-8")
+        token = jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
 
         return jsonify({"token": token, "user": user.to_dict()}), 200
 

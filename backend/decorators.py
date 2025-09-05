@@ -1,7 +1,7 @@
 from functools import wraps
 from flask import request, jsonify, g
 import jwt
-from backend.models.user import User
+from .models import User
 from .config import Config
 
 def token_required(f):
@@ -25,6 +25,6 @@ def token_required(f):
         except jwt.InvalidTokenError:
             return jsonify({'message': 'Token is invalid!'}), 401
 
-        return f(*args, **kwargs)
+        return f(current_user, *args, **kwargs)
 
     return decorated
