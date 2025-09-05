@@ -13,5 +13,5 @@ class Config:
      # Allow CORS from your Vercel frontend and local dev
     CORS_ORIGINS = os.getenv(
         "CORS_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000,https://mb-frontend-rho.vercel.app"
+        "http://mb-frontend-rho.vercel.app"
     )
