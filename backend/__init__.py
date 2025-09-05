@@ -13,10 +13,14 @@ def create_app(config_class="backend.config.Config"):
     migrate.init_app(app, db)
     bcrypt.init_app(app)
     cors.init_app(
-        app,
-        resources={r"/api/*": {"origins": app.config.get("CORS_ORIGINS").split(",")}},
-        supports_credentials=True
-    )
+    app,
+    resources={
+        r"/api/*": {
+            "origins": [origin.strip() for origin in app.config["CORS_ORIGINS"].split(",")]
+        }
+    },
+    supports_credentials=True
+)
 
     # Import models to ensure they are registered with SQLAlchemy for migrations
     from backend.models import user, mood_entry, user_settings
