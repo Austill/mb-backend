@@ -22,19 +22,19 @@ def create_app(config_class="backend.config.Config"):
     supports_credentials=True
 )
 
-    # Import models to ensure they are registered with SQLAlchemy for migrations
-    from backend.models import user, mood_entry, user_settings
+    # This will execute backend/models/__init__.py and register all models
+    from . import models
 
     # Import and register blueprints
     from backend.routes.journal import journal_bp
-    from backend.routes.user import user_bp
+    # from backend.routes.user import user_bp  # This file was not provided
     from backend.routes.auth import auth
-    from backend.routes.mood import mood_bp
+    # from backend.routes.mood import mood_bp    # This file was not provided
 
     app.register_blueprint(journal_bp, url_prefix="/api/journal")
-    app.register_blueprint(user_bp, url_prefix="/api/user")
+    # app.register_blueprint(user_bp, url_prefix="/api/user")
     app.register_blueprint(auth, url_prefix="/api/auth")
-    app.register_blueprint(mood_bp, url_prefix="/api/mood")
+    # app.register_blueprint(mood_bp, url_prefix="/api/mood")
 
     # Health check route
     @app.route("/api/health")

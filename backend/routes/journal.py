@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, g
 from backend.extensions import db
-from backend.models.journal_entry import JournalEntry
+from backend.models import JournalEntry
 from backend.decorators import token_required
 from datetime import datetime
 
@@ -10,7 +10,7 @@ journal_bp = Blueprint("journal_bp", __name__)
 @journal_bp.route("/entries", methods=["GET"])
 @token_required
 def get_entries(current_user):
-    entries = JournalEntry.query.filter_by(user_id=current_user.id).order_by(JournalEntry.date.desc()).all()
+    entries = JournalEntry.query.filter_by(user_id=current_user.id).order_by(JournalEntry.created_at.desc()).all()
     return jsonify([entry.to_dict() for entry in entries])
 
 # Create a new journal entry

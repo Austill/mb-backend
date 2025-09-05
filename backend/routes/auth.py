@@ -25,17 +25,20 @@ def register():
         if not data:
             return jsonify({"message": "Request body must be JSON"}), 400
 
-        username = data.get('username')
+        firstName = data.get('firstName')
+        lastName = data.get('lastName')
         email = data.get('email')
         password = data.get('password')
 
-        if not all([username, email, password]):
-            return jsonify({"message": "Username, email, and password are required"}), 400
+        if not all([firstName, lastName, email, password]):
+            return jsonify({"message": "firstName, lastName, email, and password are required"}), 400
 
-        if User.query.filter((User.username == username) | (User.email == email)).first():
-            return jsonify({"message": "Username or email already exists"}), 409
+        if User.query.filter_by(email=email).first():
+            return jsonify({"message": "Email already exists"}), 409
 
-        new_user = User(username=username, email=email)
+        new_user = User(
+            first_name=firstName, last_name=lastName, email=email
+        )
         new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()

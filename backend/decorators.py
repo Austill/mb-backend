@@ -19,7 +19,6 @@ def token_required(f):
             current_user = User.query.get(data['user_id'])
             if not current_user:
                  return jsonify({'message': 'User not found!'}), 401
-            g.current_user = current_user
         except jwt.ExpiredSignatureError:
             return jsonify({'message': 'Token has expired!'}), 401
         except jwt.InvalidTokenError:
