@@ -22,6 +22,16 @@ def create_app(config_class="backend.config.Config"):
     supports_credentials=True
 )
 
+    # Validate database connection on startup
+    with app.app_context():
+        try:
+            with db.engine.connect() as connection:
+                connection.execute(db.text("SELECT 1"))
+            app.logger.info("Database connection established successfully")
+        except Exception as e:
+            app.logger.error("Failed to connect to database: %s", e)
+            raise
+
     # This will execute backend/models/__init__.py and register all models
     from . import models
 
