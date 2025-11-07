@@ -13,5 +13,5 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 # Start the app
-exec python -m gunicorn backend.app:app
+exec gunicorn backend.app:app --bind 0.0.0.0:"${PORT:-5000}" --workers 3 --timeout 120
 
