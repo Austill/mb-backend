@@ -13,4 +13,5 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 # Start the app
-exec gunicorn run:app -b 0.0.0.0:5000
+exec python -m gunicorn backend.app:app
+
