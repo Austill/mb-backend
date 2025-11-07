@@ -9,8 +9,8 @@ load_dotenv(dotenv_path=dotenv_path)
 class Config:
     """Base configuration settings."""
     SECRET_KEY = os.getenv("SECRET_KEY", "a-very-secret-key-for-dev")
-    MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/mindbuddy")
-    MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "mind_buddy")
+    MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://austin:misarobt1@cluster1.ynxgjwq.mongodb.net/?retryWrites=true&w=majority&appName=Cluster1")
+    MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "mindbuddy")
     FLW_SECRET_KEY = os.getenv("FLW_SECRET_KEY")
     FLW_SIGNATURE_KEY = os.getenv("FLW_SIGNATURE_KEY")
     FLW_PLAN_ID = os.getenv("FLW_PLAN_ID")
