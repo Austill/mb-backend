@@ -4,6 +4,9 @@ from flask import Flask
 from .extensions import mongo, bcrypt, cors, jwt
 from pymongo import MongoClient
 
+# Reduce pymongo logging verbosity
+logging.getLogger('pymongo').setLevel(logging.WARNING)
+
 
 def create_app(config_class="backend.config.Config"):
     app = Flask(__name__)
@@ -31,18 +34,10 @@ def create_app(config_class="backend.config.Config"):
 
     # Initialize MongoDB
     global mongo
-    mongo = MongoClient(app.config["MONGO_URI"])
+    mongo = MongoClient(app.config["MONGO_URI"], serverSelectionTimeoutMS=5000)
     db = mongo.mindbuddy
-
-    # Validate database connection on startup
-    with app.app_context():
-        try:
-            # Ping the database
-            mongo.admin.command('ping')
-            app.logger.info("MongoDB connection established successfully")
-        except Exception as e:
-            app.logger.error("Failed to connect to MongoDB: %s", e)
-            raise
+    
+    app.logger.info("MongoDB client initialized")
 
     # This will execute backend/models/__init__.py and register all models
     from . import models
