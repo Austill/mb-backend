@@ -94,18 +94,31 @@ def change_password(current_user):
 @auth.route("/login", methods=["POST"])
 def login():
     try:
+        import time
+
+        start_total = time.perf_counter()
         data = request.get_json(silent=True) or request.form or {}
         email, password = _extract_email_password(data)
 
         if not email or not password:
             return jsonify({"message": "email and password are required"}), 400
 
+        # Measure DB lookup time
+        t0 = time.perf_counter()
         user_data = User.find_by_email(email)
+        t_db = time.perf_counter() - t0
+        current_app.logger.debug("DB lookup for email=%s took %.3f seconds", email, t_db)
         if not user_data:
             return jsonify({"message": "Invalid credentials"}), 401
 
         user = User.from_dict(user_data)
-        if not user.check_password(password):
+        # Measure password hash verification time
+        t1 = time.perf_counter()
+        pw_ok = user.check_password(password)
+        t_pw = time.perf_counter() - t1
+        current_app.logger.debug("Password verification for user_id=%s took %.3f seconds", str(user._id), t_pw)
+
+        if not pw_ok:
             return jsonify({"message": "Invalid credentials"}), 401
 
         payload = {
@@ -115,8 +128,15 @@ def login():
 
         token = jwt.encode(payload, current_app.config["SECRET_KEY"], algorithm="HS256")
 
-        current_app.logger.info("User login successful: user_id=%s, email=%s, _id type=%s", str(user._id), user.email, type(user._id))
-        current_app.logger.debug("User _id details: str(user._id)=%s, repr(user._id)=%s", str(user._id), repr(user._id))
+        total_elapsed = time.perf_counter() - start_total
+        current_app.logger.info(
+            "User login successful: user_id=%s, email=%s, db=%.3fs pw=%.3fs total=%.3fs",
+            str(user._id), user.email, t_db, t_pw, total_elapsed
+        )
+        current_app.logger.debug(
+            "User _id details: str(user._id)=%s, repr(user._id)=%s",
+            str(user._id), repr(user._id)
+        )
         return jsonify({"token": token, "user": serialize_doc(user.to_dict())}), 200
 
     except Exception as e:

@@ -19,7 +19,7 @@ class Config:
     # The string is split by commas in __init__.py
     CORS_ORIGINS = os.getenv(
         "CORS_ORIGINS",
-        "http://mb-frontend-rho.vercel.app,http://localhost:8080"
+        "https://mb-frontend-rho.vercel.app,http://mb-frontend-rho.vercel.app,http://localhost:8080,https://localhost:8080"
     )
 
     # JWT configuration

@@ -32,11 +32,31 @@ def create_app(config_class="backend.config.Config"):
     supports_credentials=True
 )
 
-    # Initialize MongoDB
+    # Initialize MongoDB (don't block on connect; set reasonable timeouts)
     global mongo
-    mongo = MongoClient(app.config["MONGO_URI"], serverSelectionTimeoutMS=5000)
+    try:
+        mongo = MongoClient(
+            app.config["MONGO_URI"],
+            serverSelectionTimeoutMS=5000,
+            socketTimeoutMS=20000,
+            connect=False
+        )
+    except TypeError:
+        # Some pymongo versions may not accept connect=False; fall back gracefully
+        mongo = MongoClient(
+            app.config["MONGO_URI"],
+            serverSelectionTimeoutMS=5000,
+            socketTimeoutMS=20000,
+        )
     db = mongo.mindbuddy
     
+    # Ensure an index on users.email to speed up lookups (best-effort)
+    try:
+        db.users.create_index("email", unique=True, background=True)
+        app.logger.info("Ensured index on users.email")
+    except Exception as e:
+        app.logger.warning("Could not create index on users.email: %s", e)
+
     app.logger.info("MongoDB client initialized")
 
     # This will execute backend/models/__init__.py and register all models

@@ -9,6 +9,10 @@ from backend.models import ChatLog, SentimentHistory
 from backend.services.llm_service import get_llm_service
 from backend.services.sentiment_service import get_sentiment_analyzer
 import traceback
+import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 chat_bp = Blueprint("ai_chat", __name__)
 
@@ -28,22 +32,41 @@ def send_message(current_user):
         if not message or len(message.strip()) < 1:
             return jsonify({"message": "Message is required"}), 400
         
+        start_time = time.time()
         current_app.logger.info(f"Chat message from user: {current_user._id}")
-        
+
         # Analyze message sentiment (quick, for context)
-        analyzer = get_sentiment_analyzer()
-        message_sentiment = analyzer.analyze_sentiment(message)
-        sentiment_label = message_sentiment.get('sentiment_label', 'neutral')
+        try:
+            analyzer = get_sentiment_analyzer()
+            message_sentiment = analyzer.analyze_sentiment(message)
+            sentiment_label = message_sentiment.get('sentiment_label', 'neutral')
+        except Exception as e:
+            # Log but continue — sentiment is optional
+            logger.exception("Sentiment analysis failed: %s", e)
+            message_sentiment = {}
+            sentiment_label = 'neutral'
         
         # Get conversation context if conversation_id provided
         context = []
         if conversation_id:
-            context = ChatLog.get_conversation_context(conversation_id, limit=5)
+            try:
+                context = ChatLog.get_conversation_context(conversation_id, limit=5)
+            except Exception as e:
+                logger.exception("Failed to fetch conversation context for %s: %s", conversation_id, e)
+                context = []
         
         # Generate AI response using LLM service
-        llm_service = get_llm_service()
+        # Initialize LLM service (may lazily load heavy models)
+        try:
+            llm_service = get_llm_service()
+        except Exception as e:
+            logger.exception("Failed to initialize LLM service: %s", e)
+            llm_service = None
+
         if llm_service is None:
-            return jsonify({'error': 'LLM service not available'}), 503
+            # Return a graceful fallback to the front-end so UX isn't blocked
+            current_app.logger.warning("LLM service unavailable, returning mock response")
+            return jsonify({'response': "Sorry, the AI chat is temporarily unavailable. I'll get back to you soon.", 'source': 'mock'}), 503
 
         # Convert context to messages format for LLM service
         messages = []
@@ -60,7 +83,13 @@ def send_message(current_user):
         messages.append({"role": "user", "content": message})
 
         # Generate response
-        ai_response = llm_service.generate_response(messages)
+        # Generate response with defensive error handling
+        try:
+            ai_response = llm_service.generate_response(messages)
+        except Exception as e:
+            logger.exception("LLM generation failed: %s", e)
+            # Provide a safe fallback response so front-end can show a helpful message
+            ai_response = "Sorry, I couldn't process that right now. Please try again later."
 
         # Check for crisis keywords in response
         requires_help = any(keyword in ai_response.lower() for keyword in [
@@ -74,19 +103,26 @@ def send_message(current_user):
         }
         
         # Save chat log
-        chat_log = ChatLog(
-            user_id=str(current_user._id),
-            message=message,
-            role='user',
-            ai_response=response_data['response'],
-            conversation_id=conversation_id
-        )
-        chat_log.sentiment = sentiment_label
-        chat_log.save()
+        # Save chat log (best-effort; don't fail the request if saving errors)
+        try:
+            chat_log = ChatLog(
+                user_id=str(current_user._id),
+                message=message,
+                role='user',
+                ai_response=response_data['response'],
+                conversation_id=conversation_id
+            )
+            chat_log.sentiment = sentiment_label
+            chat_log.save()
+        except Exception as e:
+            logger.exception("Failed to save chat log for user %s: %s", current_user._id, e)
         
         # If new conversation, use the generated conversation_id
-        if not conversation_id:
+        if not conversation_id and 'chat_log' in locals() and getattr(chat_log, 'conversation_id', None):
             conversation_id = chat_log.conversation_id
+
+        elapsed = time.time() - start_time
+        logger.info("Chat message processed for user %s in %.2fs", current_user._id, elapsed)
         
         return jsonify({
             "conversation_id": conversation_id,

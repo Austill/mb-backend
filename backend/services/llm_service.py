@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import logging
 import torch
 from transformers import BlenderbotTokenizer, BlenderbotForConditionalGeneration
 
@@ -10,9 +11,11 @@ try:
 except ImportError:
     GROQ_AVAILABLE = False
 
+logger = logging.getLogger(__name__)
+
 
 class LLMService:
-    def __init__(self, model_path=None):
+    def __init__(self, model_path=None, lazy_load=True):
         self.groq_key = os.getenv("GROQ_API_KEY")
         self.use_groq = False
         self.client = None
@@ -38,18 +41,20 @@ class LLMService:
         self.model_path = model_path or os.path.expanduser(
             "~/.cache/huggingface/hub/models--facebook--blenderbot-400M-distill"
         )
-
         # === Try Groq first ===
         if GROQ_AVAILABLE and self.groq_key:
             try:
                 self.client = Groq(api_key=self.groq_key)
                 self.use_groq = True
-                print("⚡ Using Groq Cloud LLM backend")
+                logger.info("Using Groq Cloud LLM backend")
             except Exception as e:
-                print(f"⚠️ Failed to init Groq client: {e} — falling back to local")
+                logger.exception("Failed to init Groq client; falling back to local: %s", e)
 
         # === Local model fallback ===
-        if not self.use_groq:
+        # Optionally defer loading of the heavy local model until first request
+        self._loading = False
+        self._lazy_load = lazy_load
+        if not self.use_groq and not self._lazy_load:
             self._load_local_model()
 
         # Generation parameters
@@ -63,13 +68,13 @@ class LLMService:
     def _load_local_model(self):
         """Load Blenderbot model as local fallback."""
         try:
-            print(f"🧠 Loading local Blenderbot model from: {self.model_path}")
+            logger.info("Loading local Blenderbot model from: %s", self.model_path)
             self.tokenizer = BlenderbotTokenizer.from_pretrained(self.model_path)
             self.model = BlenderbotForConditionalGeneration.from_pretrained(self.model_path)
             self.model.to(self.device)
-            print(f"✅ Local model ready on {self.device.upper()}")
+            logger.info("Local model ready on %s", self.device.upper())
         except Exception as e:
-            print(f"❌ Failed to load local Blenderbot: {e}")
+            logger.exception("Failed to load local Blenderbot: %s", e)
             self.model, self.tokenizer = None, None
 
     # =====================================================
@@ -157,9 +162,25 @@ class LLMService:
                     return response
                 return "[Empty response from Groq model.]"
             except Exception as e:
-                print(f"⚠️ Groq API error: {e} — switching to local model")
+                logger.exception("Groq API error; switching to local model: %s", e)
 
         # ===== Local Blenderbot fallback =====
+        # If lazy loading is enabled and model isn't ready, start background load and return a friendly message
+        if not self.use_groq and (self.model is None or self.tokenizer is None):
+            if self._lazy_load and not self._loading:
+                # Start background loader
+                import threading
+
+                def _bg_load():
+                    try:
+                        self._loading = True
+                        self._load_local_model()
+                    finally:
+                        self._loading = False
+
+                threading.Thread(target=_bg_load, daemon=True).start()
+                return "[LLM is starting up — please try again in a few seconds.]"
+
         if self.model and self.tokenizer:
             try:
                 inputs = self.tokenizer(user_message, return_tensors="pt").to(self.device)
@@ -177,6 +198,7 @@ class LLMService:
                 self.chat_history.append(response)
                 return response
             except Exception as e:
+                logger.exception("Local model generation error: %s", e)
                 return f"[Local model generation error: {e}]"
 
         return "[No LLM backend available — verify Groq API key or local model path.]"

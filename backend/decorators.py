@@ -10,6 +10,11 @@ logger = logging.getLogger(__name__)
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        # Allow CORS preflight OPTIONS to pass through without auth so that
+        # browser preflight requests receive CORS headers (Flask-CORS will add them).
+        if request.method == 'OPTIONS':
+            return jsonify({}), 200
+
         token = None
         if 'Authorization' in request.headers:
             token = request.headers['Authorization'].split(" ")[1]
