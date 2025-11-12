@@ -33,7 +33,7 @@ def token_required(f):
                 logger.info("Available user data: %s", user_data)
                 return jsonify({'message': 'User not found!'}), 401
             current_user = User.from_dict(user_data)
-            logger.info("Token validation successful for user_id: %s (%s %s)", user_id, current_user.email, request.method, request.path)
+            logger.info("Token validation successful for user_id: %s (email: %s) request: %s %s", user_id, current_user.email, request.method, request.path)
         except jwt.ExpiredSignatureError:
             logger.warning("Token expired for request: %s %s", request.method, request.path)
             return jsonify({'message': 'Token has expired!'}), 401
