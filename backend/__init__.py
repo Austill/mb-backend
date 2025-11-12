@@ -1,6 +1,6 @@
 import os
 import logging
-from flask import Flask
+from flask import Flask, request
 from .extensions import mongo, bcrypt, cors, jwt
 from pymongo import MongoClient
 
@@ -92,6 +92,36 @@ def create_app(config_class="backend.config.Config"):
     @app.route("/api/health")
     def health_check():
         return {"status": "healthy"}
+
+    # Global CORS enforcement (defensive fallback in case Flask-CORS misses something)
+    allowed_origins = [origin.strip() for origin in app.config["CORS_ORIGINS"].split(",")]
+
+    @app.before_request
+    def _handle_options_preflight():
+        # Return a default CORS preflight response if needed
+        if request.method == 'OPTIONS':
+            resp = app.make_default_options_response()
+            origin = request.headers.get('Origin')
+            if origin and (origin in allowed_origins or '*' in allowed_origins):
+                headers = resp.headers
+                headers['Access-Control-Allow-Origin'] = origin
+                headers['Access-Control-Allow-Credentials'] = 'true'
+                headers['Access-Control-Allow-Headers'] = 'Authorization,Content-Type'
+                headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
+                headers['Vary'] = 'Origin'
+            return resp
+
+    @app.after_request
+    def _apply_cors_headers(response):
+        origin = request.headers.get('Origin')
+        if origin and (origin in allowed_origins or '*' in allowed_origins):
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+            response.headers['Access-Control-Allow-Headers'] = 'Authorization,Content-Type'
+            response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
+            # Ensure caching proxies vary by Origin
+            response.headers['Vary'] = 'Origin'
+        return response
 
     # Homepage route
     @app.route("/")
