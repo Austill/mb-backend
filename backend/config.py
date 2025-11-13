@@ -9,7 +9,7 @@ load_dotenv(dotenv_path=dotenv_path)
 class Config:
     """Base configuration settings."""
     SECRET_KEY = os.getenv("SECRET_KEY", "a-very-secret-key-for-dev")
-    MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://austin:misarobt1@cluster1.ynxgjwq.mongodb.net/?appName=Cluster1")
+    MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://austin:<db_password>@cluster1.ynxgjwq.mongodb.net/?appName=Cluster1")
     MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "mindbuddy")
     FLW_SECRET_KEY = os.getenv("FLW_SECRET_KEY")
     FLW_SIGNATURE_KEY = os.getenv("FLW_SIGNATURE_KEY")
@@ -19,7 +19,7 @@ class Config:
     # The string is split by commas in __init__.py
     CORS_ORIGINS = os.getenv(
         "CORS_ORIGINS",
-        "https://mb-frontend-rho.vercel.app,http://mb-frontend-rho.vercel.app,http://localhost:8080,https://localhost:8080"
+        "http://mb-frontend-rho.vercel.app,http://localhost:8080"
     )
 
     # JWT configuration
@@ -29,7 +29,9 @@ class Config:
     JWT_HEADER_TYPE = 'Bearer'
 
     # Logging configuration
-    LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "DEBUG")
+    # Default to INFO to avoid very noisy logs in production (Render).
+    # Override with the LOGGING_LEVEL env var (e.g. DEBUG, INFO, WARNING).
+    LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
     LOGGING_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
     # LLM configuration

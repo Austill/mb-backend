@@ -1,11 +1,8 @@
 import os
 import logging
-from flask import Flask, request
+from flask import Flask
 from .extensions import mongo, bcrypt, cors, jwt
 from pymongo import MongoClient
-
-# Reduce pymongo logging verbosity
-logging.getLogger('pymongo').setLevel(logging.WARNING)
 
 
 def create_app(config_class="backend.config.Config"):
@@ -14,50 +11,54 @@ def create_app(config_class="backend.config.Config"):
     app.config.from_object(config_class)
 
     # Configure logging
-    logging.basicConfig(
-        level=getattr(logging, app.config["LOGGING_LEVEL"]),
-        format=app.config["LOGGING_FORMAT"]
-    )
+    # If the process already has handlers (e.g. Gunicorn in production), don't add
+    # a new basicConfig handler which would otherwise duplicate logs. Instead
+    # respect existing handlers and only set the level.
+    desired_level = getattr(logging, app.config["LOGGING_LEVEL"].upper(), logging.INFO)
+
+    if not logging.getLogger().handlers:
+        logging.basicConfig(
+            level=desired_level,
+            format=app.config["LOGGING_FORMAT"]
+        )
+    else:
+        # Running under Gunicorn or another WSGI server that configured logging.
+        logging.getLogger().setLevel(desired_level)
+
+    # Quiet down very noisy third-party loggers unless explicitly DEBUG
+    if desired_level != logging.DEBUG:
+        logging.getLogger('werkzeug').setLevel(logging.WARNING)
+        logging.getLogger('gunicorn.error').setLevel(logging.WARNING)
+        logging.getLogger('gunicorn.access').setLevel(logging.WARNING)
+        logging.getLogger('pymongo').setLevel(logging.WARNING)
 
     # Initialize extensions
     bcrypt.init_app(app)
     jwt.init_app(app)
-    # Configure CORS with explicit origins list
-    cors_origins = [origin.strip() for origin in app.config["CORS_ORIGINS"].split(",")]
     cors.init_app(
-        app,
-        origins=cors_origins,
-        supports_credentials=True,
-        allow_headers=["Authorization", "Content-Type"],
-        methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-    )
+    app,
+    resources={
+        r"/api/*": {
+            "origins": [origin.strip() for origin in app.config["CORS_ORIGINS"].split(",")]
+        }
+    },
+    supports_credentials=True
+)
 
-    # Initialize MongoDB (don't block on connect; set reasonable timeouts)
+    # Initialize MongoDB
     global mongo
-    try:
-        mongo = MongoClient(
-            app.config["MONGO_URI"],
-            serverSelectionTimeoutMS=5000,
-            socketTimeoutMS=20000,
-            connect=False
-        )
-    except TypeError:
-        # Some pymongo versions may not accept connect=False; fall back gracefully
-        mongo = MongoClient(
-            app.config["MONGO_URI"],
-            serverSelectionTimeoutMS=5000,
-            socketTimeoutMS=20000,
-        )
+    mongo = MongoClient(app.config["MONGO_URI"])
     db = mongo.mindbuddy
-    
-    # Ensure an index on users.email to speed up lookups (best-effort)
-    try:
-        db.users.create_index("email", unique=True, background=True)
-        app.logger.info("Ensured index on users.email")
-    except Exception as e:
-        app.logger.warning("Could not create index on users.email: %s", e)
 
-    app.logger.info("MongoDB client initialized")
+    # Validate database connection on startup
+    with app.app_context():
+        try:
+            # Ping the database
+            mongo.admin.command('ping')
+            app.logger.info("MongoDB connection established successfully")
+        except Exception as e:
+            app.logger.error("Failed to connect to MongoDB: %s", e)
+            raise
 
     # This will execute backend/models/__init__.py and register all models
     from . import models
@@ -92,8 +93,6 @@ def create_app(config_class="backend.config.Config"):
     @app.route("/api/health")
     def health_check():
         return {"status": "healthy"}
-
-
 
     # Homepage route
     @app.route("/")

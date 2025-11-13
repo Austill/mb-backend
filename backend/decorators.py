@@ -10,11 +10,6 @@ logger = logging.getLogger(__name__)
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        # Allow CORS preflight OPTIONS to pass through without auth so that
-        # browser preflight requests receive CORS headers (Flask-CORS will add them).
-        if request.method == 'OPTIONS':
-            return jsonify({}), 200
-
         token = None
         if 'Authorization' in request.headers:
             token = request.headers['Authorization'].split(" ")[1]
@@ -33,7 +28,7 @@ def token_required(f):
                 logger.info("Available user data: %s", user_data)
                 return jsonify({'message': 'User not found!'}), 401
             current_user = User.from_dict(user_data)
-            logger.info("Token validation successful for user_id: %s (email: %s) request: %s %s", user_id, current_user.email, request.method, request.path)
+            logger.info("Token validation successful for user_id: %s (%s %s)", user_id, current_user.email, request.method, request.path)
         except jwt.ExpiredSignatureError:
             logger.warning("Token expired for request: %s %s", request.method, request.path)
             return jsonify({'message': 'Token has expired!'}), 401
