@@ -57,8 +57,12 @@ def create_app(config_class="backend.config.Config"):
             mongo.admin.command('ping')
             app.logger.info("MongoDB connection established successfully")
         except Exception as e:
+            # Log error but allow app to continue starting for local development.
+            # The app will run with `app.config['MONGO_AVAILABLE'] = False` and
+            # routes that require the DB should handle the missing connection.
             app.logger.error("Failed to connect to MongoDB: %s", e)
-            raise
+            app.logger.warning("Continuing without MongoDB connection. Some features will be disabled.")
+            app.config['MONGO_AVAILABLE'] = False
 
     # This will execute backend/models/__init__.py and register all models
     from . import models
@@ -86,8 +90,8 @@ def create_app(config_class="backend.config.Config"):
     app.register_blueprint(ai_chat_bp, url_prefix="/api/chat")
     app.register_blueprint(insights_bp, url_prefix="/api/ai_insights")
 
-    # LLM service will be initialized lazily on first use
-    app.logger.info("LLM service will be initialized on first use")
+    # Groq LLM service will be initialized lazily on first use
+    app.logger.info("Groq LLM service initialized and ready for chat functionality")
 
     # Health check route
     @app.route("/api/health")

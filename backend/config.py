@@ -9,7 +9,7 @@ load_dotenv(dotenv_path=dotenv_path)
 class Config:
     """Base configuration settings."""
     SECRET_KEY = os.getenv("SECRET_KEY", "a-very-secret-key-for-dev")
-    MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://austin:<db_password>@cluster1.ynxgjwq.mongodb.net/?appName=Cluster1")
+    MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://austin:misaro@cluster1.ynxgjwq.mongodb.net/?appName=Cluster1")
     MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "mindbuddy")
     FLW_SECRET_KEY = os.getenv("FLW_SECRET_KEY")
     FLW_SIGNATURE_KEY = os.getenv("FLW_SIGNATURE_KEY")
@@ -19,7 +19,7 @@ class Config:
     # The string is split by commas in __init__.py
     CORS_ORIGINS = os.getenv(
         "CORS_ORIGINS",
-        "http://mb-frontend-rho.vercel.app,http://localhost:8080"
+        "http://mb-frontend-rho.vercel.app,"
     )
 
     # JWT configuration
@@ -34,8 +34,5 @@ class Config:
     LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
     LOGGING_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-    # LLM configuration
-    HF_MODEL_NAME = os.getenv("HF_MODEL_NAME", "facebook/blenderbot-400M-distill")
-    MAX_NEW_TOKENS = int(os.getenv("MAX_NEW_TOKENS", "100"))
-    TEMPERATURE = float(os.getenv("TEMPERATURE", "0.7"))
-    TOP_P = float(os.getenv("TOP_P", "0.9"))
+    # Groq API configuration
+    GROQ_API_KEY = os.getenv("GROQ_API_KEY")
