@@ -17,9 +17,10 @@ class Config:
     REDIRECT_URL = os.getenv("REDIRECT_URL")
     # Allow CORS from your Vercel frontend and local dev
     # The string is split by commas in __init__.py
+    # Note: include the exact scheme (https://) for deployed Vercel frontend
     CORS_ORIGINS = os.getenv(
         "CORS_ORIGINS",
-        "http://mb-frontend-rho.vercel.app,"
+        "https://mb-frontend-rho.vercel.app,http://localhost:3000,http://127.0.0.1:3000"
     )
 
     # JWT configuration
