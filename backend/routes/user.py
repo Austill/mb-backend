@@ -68,6 +68,105 @@ def update_profile(current_user):
         current_app.logger.error("Update profile error: %s\n%s", e, traceback.format_exc())
         return jsonify({"message": "Internal server error"}), 500
 
+@user_bp.route("/update-profile", methods=["PATCH"])
+@token_required
+def update_profile_patch(current_user):
+    """Update user profile (PATCH endpoint)"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided"}), 400
+
+        update_data = {}
+
+        # Update allowed fields
+        if 'firstName' in data:
+            first_name = data['firstName'].strip()
+            if not first_name:
+                return jsonify({"message": "firstName cannot be empty"}), 400
+            update_data['first_name'] = first_name
+            
+        if 'lastName' in data:
+            last_name = data['lastName'].strip()
+            if not last_name:
+                return jsonify({"message": "lastName cannot be empty"}), 400
+            update_data['last_name'] = last_name
+            
+        if 'email' in data:
+            email = data['email'].strip().lower()
+            if not email:
+                return jsonify({"message": "email cannot be empty"}), 400
+            # Check if email is already taken by another user
+            existing_user = User.find_by_email(email)
+            if existing_user and str(existing_user['_id']) != str(current_user._id):
+                return jsonify({"message": "Email already in use"}), 400
+            update_data['email'] = email
+            
+        if 'phone' in data:
+            update_data['phone'] = data['phone'].strip() or None
+
+        if not update_data:
+            return jsonify({"message": "No valid fields to update"}), 400
+
+        current_user.update(update_data)
+        # Refresh current_user data
+        current_user_data = User.find_by_id(str(current_user._id))
+        if current_user_data:
+            current_user = User.from_dict(current_user_data)
+
+        return jsonify({
+            "message": "Profile updated successfully",
+            "user": current_user.to_dict()
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error("Update profile (PATCH) error: %s\n%s", e, traceback.format_exc())
+        return jsonify({"message": "Internal server error"}), 500
+
+@user_bp.route("/update-password", methods=["PATCH"])
+@token_required
+def update_password(current_user):
+    """Update user password with validation of old password"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"message": "No data provided"}), 400
+
+        old_password = data.get("oldPassword") or data.get("currentPassword")
+        new_password = data.get("newPassword")
+
+        if not old_password:
+            return jsonify({"message": "oldPassword is required"}), 400
+        if not new_password:
+            return jsonify({"message": "newPassword is required"}), 400
+
+        # Validate old password
+        if not current_user.check_password(old_password):
+            current_app.logger.warning("Password update attempt with incorrect old password for user_id: %s", str(current_user._id))
+            return jsonify({"message": "Current password is incorrect"}), 401
+
+        # Validate new password strength
+        if len(new_password) < 8:
+            return jsonify({"message": "New password must be at least 8 characters long"}), 400
+
+        if old_password == new_password:
+            return jsonify({"message": "New password must be different from current password"}), 400
+
+        # Hash and update new password
+        from backend.extensions import bcrypt
+        password_hash = bcrypt.generate_password_hash(new_password).decode("utf-8")
+        current_user.update({"password_hash": password_hash})
+
+        current_app.logger.info("Password updated successfully for user_id: %s", str(current_user._id))
+
+        return jsonify({
+            "message": "Password updated successfully"
+        }), 200
+
+    except Exception as e:
+        current_app.logger.error("Update password error: %s\n%s", e, traceback.format_exc())
+        return jsonify({"message": "Internal server error"}), 500
+
 @user_bp.route("/settings", methods=["GET"])
 @token_required
 def get_settings(current_user):

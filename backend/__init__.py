@@ -84,6 +84,7 @@ def create_app(config_class="backend.config.Config"):
     from backend.routes.chat import chat_bp
     from backend.routes.ai_chat import chat_bp as ai_chat_bp
     from backend.routes.ai_insights import insights_bp
+    from backend.routes.progress import progress_bp
 
     app.register_blueprint(journal_bp, url_prefix="/api/journal")
     app.register_blueprint(user_bp, url_prefix="/api/user")
@@ -95,6 +96,7 @@ def create_app(config_class="backend.config.Config"):
     app.register_blueprint(chat_bp)
     app.register_blueprint(ai_chat_bp, url_prefix="/api/chat")
     app.register_blueprint(insights_bp, url_prefix="/api/ai_insights")
+    app.register_blueprint(progress_bp, url_prefix="/api/progress")
 
     # Groq LLM service will be initialized lazily on first use
     app.logger.info("Groq LLM service initialized and ready for chat functionality")

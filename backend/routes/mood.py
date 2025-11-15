@@ -11,10 +11,10 @@ mood_bp = Blueprint("mood", __name__)
 def ping_mood():
     return jsonify({"message": "mood blueprint is alive"}), 200
 
-@mood_bp.route("/entries", methods=["POST"])
+@mood_bp.route("", methods=["POST"])
 @token_required
 def create_mood_entry(current_user):
-    """Create a new mood entry"""
+    """Create a new mood entry - prevent duplicates for the same day"""
     try:
         data = request.get_json()
 
@@ -30,6 +30,25 @@ def create_mood_entry(current_user):
 
         if not isinstance(mood_level, int) or mood_level < 1 or mood_level > 5:
             return jsonify({"message": "moodLevel must be an integer between 1 and 5"}), 400
+
+        # Check for existing mood entry today
+        today = datetime.utcnow().date()
+        today_start = datetime.combine(today, datetime.min.time())
+        today_end = datetime.combine(today, datetime.max.time())
+
+        existing_today = MoodEntry.collection.find_one({
+            "user_id": ObjectId(str(current_user._id)),
+            "created_at": {
+                "$gte": today_start,
+                "$lte": today_end
+            }
+        })
+
+        if existing_today:
+            return jsonify({
+                "message": "You have already logged a mood today. Please update your existing entry or try again tomorrow.",
+                "existingEntry": MoodEntry.from_dict(existing_today).to_dict()
+            }), 409
 
         # Create new mood entry
         mood_entry = MoodEntry(
@@ -55,10 +74,10 @@ def create_mood_entry(current_user):
         current_app.logger.error("Create mood entry error: %s\n%s", e, traceback.format_exc())
         return jsonify({"message": "Internal server error"}), 500
 
-@mood_bp.route("/entries", methods=["GET"])
+@mood_bp.route("", methods=["GET"])
 @token_required
 def get_mood_entries(current_user):
-    """Get mood entries for the current user"""
+    """Get all mood entries for the current user (ordered by date, newest first)"""
     try:
         # Get query parameters
         limit = request.args.get('limit', 10, type=int)
@@ -98,7 +117,7 @@ def get_mood_entries(current_user):
         current_app.logger.error("Get mood entries error: %s\n%s", e, traceback.format_exc())
         return jsonify({"message": "Internal server error"}), 500
 
-@mood_bp.route("/entries/<entry_id>", methods=["GET"])
+@mood_bp.route("/<entry_id>", methods=["GET"])
 @token_required
 def get_mood_entry(current_user, entry_id):
     """Get a specific mood entry"""
@@ -115,7 +134,7 @@ def get_mood_entry(current_user, entry_id):
         current_app.logger.error("Get mood entry error: %s\n%s", e, traceback.format_exc())
         return jsonify({"message": "Internal server error"}), 500
 
-@mood_bp.route("/entries/<entry_id>", methods=["PUT"])
+@mood_bp.route("/<entry_id>", methods=["PUT"])
 @token_required
 def update_mood_entry(current_user, entry_id):
     """Update a mood entry"""
@@ -170,7 +189,7 @@ def update_mood_entry(current_user, entry_id):
         current_app.logger.error("Update mood entry error: %s\n%s", e, traceback.format_exc())
         return jsonify({"message": "Internal server error"}), 500
 
-@mood_bp.route("/entries/<entry_id>", methods=["DELETE"])
+@mood_bp.route("/<entry_id>", methods=["DELETE"])
 @token_required
 def delete_mood_entry(current_user, entry_id):
     """Delete a mood entry"""
@@ -263,7 +282,7 @@ def get_mood_stats(current_user):
 @mood_bp.route("/today", methods=["GET"])
 @token_required
 def get_today_mood(current_user):
-    """Check if user has logged mood today"""
+    """Check if user has logged mood today and return it if exists"""
     try:
         current_app.logger.info("Get today mood request for user_id: %s", str(current_user._id))
         today = datetime.utcnow().date()
