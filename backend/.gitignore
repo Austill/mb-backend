@@ -1,25 +1,104 @@
-# IDE and OS files
-.idea/
+
+# =========================
+# Generated .gitignore
+# - Keeps repo free of common local, IDE, build, and secret files
+# - Tailored for a Python/Flask backend
+# =========================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environment
+venv/
+ENV/
+env/
+.venv/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# Mypy
+.mypy_cache/
+
+# Pyre
+.pyre/
+
+# Flask instance folder (configuration, secrets)
+instance/
+
+# Local config and secret files
+.env
+.env.*
+.env.local
+.env.*.local
+# allow example files
+!.env.example
+!.env.*.example
+
+# Database files
+*.db
+*.sqlite3
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDEs and editors
 .vscode/
+.idea/
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
-*.sw?
-*~
+
+# macOS
 .DS_Store
 
-# Dependencies
-# Ignore node_modules directories in any folder
+# Windows
+Thumbs.db
+desktop.ini
+
+# Node
 node_modules/
 
-# Python virtual environment
-# Ignore virtual environment directories, wherever they are
-.venv/
-venv/
-
-# Build artifacts
-# Ignore build output directories in any folder
+# Frontend / build artifacts (if present)
 build/
 dist/
 .next/
@@ -27,30 +106,15 @@ dist/
 .svelte-kit/
 .vercel/
 
-# Environment variables
-# Ignore all .env files, but not .env.example files
-.env*
-!/.env.example
-!/.env.*.example
+# Packaging artifacts
+pip-wheel-metadata/
 
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Python artifacts
-__pycache__/
+# Misc
 *.pyc
 *.pyo
 *.pyd
-*.so
-*.egg-info/
-.pytest_cache/
+*.pot
+*.mo
+*.egg
 show_structure.py
-# Coverage reports
-.coverage
-.coverage.*
-coverage.xml
-htmlcov/
-.env
+
