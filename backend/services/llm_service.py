@@ -5,6 +5,7 @@ Uses Groq API exclusively for all AI-powered chat and insights functionality.
 """
 
 import os
+import logging
 from groq import Groq
 
 
@@ -167,7 +168,15 @@ def get_llm_service():
     """Lazy initializer for shared LLMService instance."""
     global _llm_service
     if _llm_service is None:
-        _llm_service = LLMService()
+        try:
+            _llm_service = LLMService()
+        except Exception as e:
+            # Fail gracefully: log a helpful error and return None so callers
+            # can respond with a 503 (service unavailable) instead of crashing
+            logging.getLogger("backend.llm_service").error(
+                "Failed to initialize LLMService: %s", e, exc_info=True
+            )
+            _llm_service = None
     return _llm_service
 
 
