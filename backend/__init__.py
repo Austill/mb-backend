@@ -35,15 +35,21 @@ def create_app(config_class="backend.config.Config"):
     # Initialize extensions
     bcrypt.init_app(app)
     jwt.init_app(app)
+    
+    # Configure CORS with explicit settings for Vercel frontend
+    cors_origins = [origin.strip() for origin in app.config["CORS_ORIGINS"].split(",")]
     cors.init_app(
-    app,
-    resources={
-        r"/api/*": {
-            "origins": [origin.strip() for origin in app.config["CORS_ORIGINS"].split(",")]
+        app,
+        resources={
+            r"/api/*": {
+                "origins": cors_origins,
+                "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+                "allow_headers": ["Content-Type", "Authorization"],
+                "supports_credentials": True,
+                "max_age": 3600
+            }
         }
-    },
-    supports_credentials=True
-)
+    )
 
     # Initialize MongoDB
     global mongo
