@@ -6,7 +6,16 @@ from datetime import datetime
 from bson import ObjectId
 
 journal_bp = Blueprint("journal_bp", __name__)
-
+# Legacy compatibility: support old /entries paths
+@journal_bp.route("/entries", methods=["GET", "POST"])
+@token_required
+def journal_entries_legacy(current_user=None):
+    # If GET, forward to the existing GET handler
+    from flask import request
+    if request.method == "GET":
+        return get_entries(current_user)
+    elif request.method == "POST":
+        return create_entry(current_user)
 @journal_bp.route("/ping", methods=["GET"])
 def ping_journal():
     return jsonify({"message": "journal blueprint is alive"}), 200
