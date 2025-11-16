@@ -33,6 +33,8 @@ def create_app(config_class="backend.config.Config"):
         logging.getLogger('pymongo').setLevel(logging.WARNING)
 
     # Initialize extensions
+    # Set bcrypt log rounds from config (for dev speedup)
+    app.config["BCRYPT_LOG_ROUNDS"] = getattr(app.config, "BCRYPT_LOG_ROUNDS", 8)
     bcrypt.init_app(app)
     jwt.init_app(app)
     

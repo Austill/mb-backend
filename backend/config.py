@@ -29,10 +29,12 @@ class Config:
     JWT_HEADER_NAME = 'Authorization'
     JWT_HEADER_TYPE = 'Bearer'
 
+    # Bcrypt configuration (lower rounds for dev speed)
+    BCRYPT_LOG_ROUNDS = int(os.getenv("BCRYPT_LOG_ROUNDS", 8))  # 8 is fast for dev, increase for prod
+
     # Logging configuration
-    # Default to INFO to avoid very noisy logs in production (Render).
-    # Override with the LOGGING_LEVEL env var (e.g. DEBUG, INFO, WARNING).
-    LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "INFO")
+    # Default to WARNING to reduce log noise in dev. Override with LOGGING_LEVEL env var.
+    LOGGING_LEVEL = os.getenv("LOGGING_LEVEL", "WARNING")
     LOGGING_FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
     # Groq API configuration

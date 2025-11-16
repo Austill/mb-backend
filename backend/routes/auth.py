@@ -2,7 +2,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from backend.models import User
 from backend.decorators import token_required
-import jwt, datetime, traceback
+import jwt, datetime, traceback, time
 
 auth = Blueprint("auth", __name__)
 
@@ -100,12 +100,20 @@ def login():
         if not email or not password:
             return jsonify({"message": "email and password are required"}), 400
 
+        t_db_start = time.perf_counter()
         user_data = User.find_by_email(email)
+        t_db_end = time.perf_counter()
+        current_app.logger.info("Login timing: DB lookup took %.3f ms for email=%s", (t_db_end - t_db_start) * 1000, email)
         if not user_data:
             return jsonify({"message": "Invalid credentials"}), 401
 
         user = User.from_dict(user_data)
-        if not user.check_password(password):
+        t_hash_start = time.perf_counter()
+        password_ok = user.check_password(password)
+        t_hash_end = time.perf_counter()
+        current_app.logger.info("Login timing: password check took %.3f ms for email=%s", (t_hash_end - t_hash_start) * 1000, email)
+
+        if not password_ok:
             return jsonify({"message": "Invalid credentials"}), 401
 
         payload = {
