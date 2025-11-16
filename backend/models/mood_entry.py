@@ -26,7 +26,8 @@ class MoodEntry:
 
     def save(self):
         self.updated_at = datetime.utcnow()
-        result = self.collection.insert_one(self.to_dict())
+        # store datetime objects in MongoDB so queries using date ranges work
+        result = self.collection.insert_one(self.to_storage_dict())
         self._id = result.inserted_id
         return result
 
@@ -63,6 +64,21 @@ class MoodEntry:
             "createdAt": self.created_at.isoformat() + "Z" if self.created_at else datetime.utcnow().isoformat() + "Z",
             "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else datetime.utcnow().isoformat() + "Z",
             "updatedAt": self.updated_at.isoformat() + "Z" if self.updated_at else datetime.utcnow().isoformat() + "Z"
+        }
+
+    def to_storage_dict(self):
+        """Return a dict suitable for MongoDB storage (dates as datetimes).
+        This ensures date range queries (using datetimes) work correctly.
+        """
+        return {
+            "_id": self._id,
+            "user_id": self.user_id,
+            "mood_level": self.mood_level,
+            "emoji": self.emoji,
+            "note": self.note,
+            "triggers": self.triggers,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
         }
 
     @classmethod

@@ -28,7 +28,8 @@ class JournalEntry:
 
     def save(self):
         self.updated_at = datetime.utcnow()
-        result = self.collection.insert_one(self.to_dict())
+        # Store datetime objects in MongoDB for reliable date queries
+        result = self.collection.insert_one(self.to_storage_dict())
         self._id = result.inserted_id
         return result
 
@@ -59,6 +60,23 @@ class JournalEntry:
             "ai_insights": self.ai_insights,
             "aiInsights": self.ai_insights,
             "tags": self.tags
+        }
+
+    def to_storage_dict(self):
+        """Return a dict suitable for MongoDB storage (dates as datetimes).
+        Keep internal/DB field names (snake_case) for storage.
+        """
+        return {
+            "_id": self._id,
+            "user_id": self.user_id,
+            "title": self.title,
+            "content": self.content,
+            "is_private": self.is_private,
+            "sentiment": self.sentiment,
+            "ai_insights": self.ai_insights,
+            "tags": self.tags,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
         }
 
     @classmethod
