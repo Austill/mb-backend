@@ -20,7 +20,7 @@ class Config:
     # Note: include the exact scheme (https://) for deployed Vercel frontend
     CORS_ORIGINS = os.getenv(
         "CORS_ORIGINS",
-        "https://mb-frontend-rho.vercel.app,http://localhost:3000,http://127.0.0.1:3000"
+        "https://mindbuddy.vercel.app,http://localhost:3000,http://127.0.0.1:3000"
     )
 
     # JWT configuration
